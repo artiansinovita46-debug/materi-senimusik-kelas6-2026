@@ -628,7 +628,12 @@
             document.getElementById('setup-screen').classList.remove('hidden');
             document.getElementById('quiz-screen').classList.add('hidden');
             document.getElementById('student-select').value = ""; 
-            document.getElementById('kuis').scrollIntoView({ behavior: 'smooth' });
+            
+            // Render ulang tabel untuk memastikan data sudah masuk secara visual
+            renderRekapTable();
+            
+            // Scroll otomatis ke bagian tabel Rekap Nilai
+            document.getElementById('rekap').scrollIntoView({ behavior: 'smooth' });
         }
 
         window.closeAlert = function() {
