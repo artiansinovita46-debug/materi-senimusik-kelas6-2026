@@ -40,6 +40,52 @@
         .custom-scroll::-webkit-scrollbar-thumb:hover {
             background: #94a3b8; 
         }
+
+        /* Style khusus untuk pencetakan (Print) agar berwarna dan rapi */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 1.5cm;
+            }
+            body {
+                background-color: white !important;
+                -webkit-print-color-adjust: exact !important; /* Memaksa browser mencetak warna */
+                print-color-adjust: exact !important;
+            }
+            /* Sembunyikan semua elemen kecuali tabel rekap */
+            header, #materi, #kuis, footer, button, .modal, #cloud-status {
+                display: none !important;
+            }
+            /* Menyesuaikan tampilan rekap khusus untuk kertas */
+            #rekap {
+                display: block !important;
+                position: relative !important;
+                width: 100% !important;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .overflow-x-auto {
+                overflow: visible !important;
+            }
+            /* Mempertegas garis tabel agar rapi saat dicetak */
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+            }
+            th, td {
+                border: 1px solid #cbd5e1 !important;
+            }
+            th {
+                background-color: #dbeafe !important; /* bg-blue-100 */
+                color: #1e40af !important; /* text-blue-800 */
+            }
+            h2 {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+            }
+        }
     </style>
 </head>
 <body class="text-gray-800">
@@ -207,9 +253,9 @@
             <p class="text-gray-500 mb-6 text-sm">Nilai akan otomatis masuk dan tersinkronisasi ke semua perangkat (HP, Tablet, Laptop) secara real-time.</p>
 
             <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
-                <table class="w-full text-left border-collapse">
+                <table class="w-full text-left border-collapse bg-white">
                     <thead>
-                        <tr class="bg-blue-100 text-blue-800 uppercase text-sm leading-normal">
+                        <tr class="bg-blue-100 text-blue-800 uppercase text-sm leading-normal print:bg-blue-100 print:text-blue-800">
                             <th class="py-3 px-6 text-center border-b border-blue-200 w-16">No</th>
                             <th class="py-3 px-6 border-b border-blue-200">Nama Siswa</th>
                             <th class="py-3 px-6 text-center border-b border-blue-200">Skor Terakhir</th>
@@ -248,16 +294,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Style khusus untuk pencetakan (Print) -->
-    <style>
-        @media print {
-            body * { visibility: hidden; }
-            #rekap, #rekap * { visibility: visible; }
-            #rekap { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border: none; }
-            button, a, nav, #cloud-status { display: none !important; }
-        }
-    </style>
 
     <!-- LOGIKA JAVASCRIPT (MODUL) -->
     <script type="module">
@@ -419,7 +455,7 @@
             studentsList.forEach((student, index) => {
                 const data = rekapNilai[student] || { score: '-', status: 'Belum Mengerjakan' };
                 const tr = document.createElement('tr');
-                tr.className = 'border-b hover:bg-gray-50 transition';
+                tr.className = 'border-b hover:bg-gray-50 transition print:border-b-2 print:border-gray-200';
                 
                 let statusColor = 'text-gray-400 italic'; 
                 if (data.status === 'TUNTAS') statusColor = 'text-green-600 font-bold';
