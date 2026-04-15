@@ -55,6 +55,7 @@
             <nav class="mt-4 md:mt-0 flex gap-4">
                 <a href="#materi" class="bg-green-500 hover:bg-green-400 px-4 py-2 rounded-full font-semibold transition">Materi</a>
                 <a href="#kuis" class="bg-yellow-400 text-green-900 hover:bg-yellow-300 px-4 py-2 rounded-full font-semibold transition">Kuis Interaktif</a>
+                <a href="#rekap" class="bg-blue-500 hover:bg-blue-400 px-4 py-2 rounded-full font-semibold transition text-white">Rekap Nilai</a>
             </nav>
         </div>
     </header>
@@ -112,7 +113,7 @@
         </section>
 
         <!-- SECTION KUIS -->
-        <section id="kuis" class="bg-white rounded-2xl shadow-xl p-8 border-t-8 border-green-500 min-h-screen">
+        <section id="kuis" class="bg-white rounded-2xl shadow-xl p-8 mb-12 border-t-8 border-green-500 min-h-[80vh]">
             <div class="flex justify-between items-center mb-6 border-b pb-4">
                 <h2 class="text-3xl font-bold text-green-700">🎮 Kuis Interaktif (Tampilan Lanskap)</h2>
             </div>
@@ -132,12 +133,12 @@
                 </button>
             </div>
 
-            <!-- LAYAR KUIS AKTIF (Dibagi 2 Kolom untuk Landscape) -->
+            <!-- LAYAR KUIS AKTIF -->
             <div id="quiz-screen" class="hidden">
                 <div class="grid lg:grid-cols-3 gap-8 relative items-start">
                     
                     <!-- Kolom Kiri: Daftar Soal -->
-                    <div class="lg:col-span-2 space-y-8 h-[80vh] overflow-y-auto custom-scroll pr-4 pb-20" id="quiz-container">
+                    <div class="lg:col-span-2 space-y-8 h-[75vh] overflow-y-auto custom-scroll pr-4 pb-20" id="quiz-container">
                         <!-- Pertanyaan akan di-generate di sini -->
                     </div>
 
@@ -173,7 +174,7 @@
                             </div>
 
                             <button onclick="resetApp()" class="w-full mt-8 bg-gray-200 hover:bg-red-500 hover:text-white text-gray-700 px-4 py-3 rounded-xl font-bold transition shadow-md">
-                                🔄 Ganti Siswa / Ulangi
+                                🔄 Selesai & Ganti Siswa
                             </button>
                         </div>
                     </div>
@@ -183,11 +184,67 @@
 
         </section>
 
+        <!-- SECTION REKAP NILAI -->
+        <section id="rekap" class="bg-white rounded-2xl shadow-xl p-8 border-t-8 border-blue-500">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b pb-4 gap-4">
+                <h2 class="text-3xl font-bold text-blue-700">📊 Rekap Keseluruhan Nilai Siswa</h2>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold shadow transition flex items-center">
+                        🖨️ Cetak
+                    </button>
+                    <button onclick="clearRekap()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold shadow transition flex items-center">
+                        🗑️ Hapus Semua Data
+                    </button>
+                </div>
+            </div>
+            
+            <p class="text-gray-500 mb-6 text-sm">Data nilai di bawah ini tersimpan secara otomatis setelah siswa menyelesaikan kuis.</p>
+
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-blue-100 text-blue-800 uppercase text-sm leading-normal">
+                            <th class="py-3 px-6 text-center border-b border-blue-200 w-16">No</th>
+                            <th class="py-3 px-6 border-b border-blue-200">Nama Siswa</th>
+                            <th class="py-3 px-6 text-center border-b border-blue-200">Skor Total</th>
+                            <th class="py-3 px-6 text-center border-b border-blue-200">Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rekap-tbody" class="text-gray-700 text-sm md:text-base">
+                        <!-- Data Tabel akan di-generate via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
     </main>
 
-    <footer class="bg-green-800 text-white text-center py-6 mt-12">
+    <footer class="bg-green-800 text-white text-center py-6 mt-12 print:hidden">
         <p>&copy; 2026 SD Negeri 60 Prabumulih - Dibuat untuk Pembelajaran Interaktif (IFP Landscape)</p>
     </footer>
+
+    <!-- Style khusus untuk pencetakan (Print) -->
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #rekap, #rekap * {
+                visibility: visible;
+            }
+            #rekap {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                box-shadow: none;
+                border: none;
+            }
+            button, a, nav {
+                display: none !important;
+            }
+        }
+    </style>
 
     <script>
         const bankSoal = [
@@ -223,22 +280,77 @@
             "SEFRI ANGGESTA PRATAMA"
         ];
 
-        // Variabel State Kuis
+        // Variabel State Kuis & Rekap
         let currentQuestions = [];
         let totalBenar = 0;
         let totalSalah = 0;
         let totalTerjawab = 0;
+        let rekapNilai = {};
 
-        // Inisialisasi Dropdown Siswa
+        // Inisialisasi Aplikasi Saat Dimuat
         window.onload = () => {
             const selectEl = document.getElementById('student-select');
+            
+            // Cek Data Rekap di Local Storage (Memori Browser)
+            const savedData = localStorage.getItem('rekapSeniMusik6');
+            if (savedData) {
+                rekapNilai = JSON.parse(savedData);
+            } else {
+                // Jika kosong, inisialisasi dengan data default
+                studentsList.forEach(student => {
+                    rekapNilai[student] = { score: '-', status: 'Belum Mengerjakan' };
+                });
+            }
+
+            // Isi Dropdown dan Render Tabel
             studentsList.forEach(student => {
                 const opt = document.createElement('option');
                 opt.value = student;
                 opt.innerText = student;
                 selectEl.appendChild(opt);
             });
+            
+            renderRekapTable();
         };
+
+        // Fungsi Membangun Tabel Rekap
+        function renderRekapTable() {
+            const tbody = document.getElementById('rekap-tbody');
+            tbody.innerHTML = ''; // Bersihkan tabel
+            
+            studentsList.forEach((student, index) => {
+                const data = rekapNilai[student] || { score: '-', status: 'Belum Mengerjakan' };
+                const tr = document.createElement('tr');
+                tr.className = 'border-b hover:bg-gray-50 transition';
+                
+                // Pewarnaan teks status
+                let statusColor = 'text-gray-400 italic'; // Belum Mengerjakan
+                if (data.status === 'TUNTAS') statusColor = 'text-green-600 font-bold';
+                if (data.status === 'REMEDIAL') statusColor = 'text-red-600 font-bold';
+                
+                let scoreDisplay = data.score === '-' ? '-' : data.score;
+
+                tr.innerHTML = `
+                    <td class="py-3 px-6 text-center">${index + 1}</td>
+                    <td class="py-3 px-6 font-medium text-gray-800">${student}</td>
+                    <td class="py-3 px-6 text-center font-bold text-lg">${scoreDisplay}</td>
+                    <td class="py-3 px-6 text-center ${statusColor}">${data.status}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Fungsi Menghapus Data Rekap
+        function clearRekap() {
+            if(confirm("Apakah Anda yakin ingin menghapus seluruh data nilai? Data tidak dapat dikembalikan.")) {
+                studentsList.forEach(student => {
+                    rekapNilai[student] = { score: '-', status: 'Belum Mengerjakan' };
+                });
+                localStorage.removeItem('rekapSeniMusik6');
+                renderRekapTable();
+                alert("Data rekap berhasil dihapus.");
+            }
+        }
 
         // Fungsi acak array (Fisher-Yates)
         function shuffleArray(array) {
@@ -265,7 +377,7 @@
             document.getElementById('quiz-screen').classList.remove('hidden');
             document.getElementById('active-student-name').innerText = selectedStudent;
 
-            // Reset Skor
+            // Reset Skor Sementara
             totalBenar = 0;
             totalSalah = 0;
             totalTerjawab = 0;
@@ -349,23 +461,34 @@
             document.getElementById('score-total').innerText = finalScore;
         }
 
-        // Tampilkan Keterangan Tuntas / Remedial
+        // Tampilkan Keterangan Tuntas / Remedial & SIMPAN KE REKAP
         function showFinalStatus() {
             const finalScore = totalBenar * 10;
             const statusContainer = document.getElementById('status-container');
             const statusText = document.getElementById('status-text');
+            const studentName = document.getElementById('active-student-name').innerText;
 
             statusContainer.classList.remove('hidden');
+            let finalStatus = "";
 
             if (finalScore >= 70) {
                 // Tuntas
                 statusContainer.className = 'py-3 px-4 rounded-xl font-extrabold text-3xl shadow-lg mt-6 bg-green-500 text-white animate-pulse';
                 statusText.innerText = "🎉 LULUS / TUNTAS";
+                finalStatus = "TUNTAS";
             } else {
                 // Remedial
                 statusContainer.className = 'py-3 px-4 rounded-xl font-extrabold text-3xl shadow-lg mt-6 bg-red-500 text-white animate-pulse';
                 statusText.innerText = "⚠️ REMEDIAL";
+                finalStatus = "REMEDIAL";
             }
+
+            // Simpan Ke Memori
+            rekapNilai[studentName] = { score: finalScore, status: finalStatus };
+            localStorage.setItem('rekapSeniMusik6', JSON.stringify(rekapNilai));
+            
+            // Perbarui Tabel
+            renderRekapTable();
         }
 
         // Kembali ke Layar Pilih Siswa
