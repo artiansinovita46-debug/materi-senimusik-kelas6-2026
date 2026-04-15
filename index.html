@@ -225,8 +225,8 @@
                                 </div>
                             </div>
 
-                            <button onclick="window.resetApp()" class="w-full mt-8 bg-gray-200 hover:bg-red-500 hover:text-white text-gray-700 px-4 py-3 rounded-xl font-bold transition shadow-md">
-                                🔄 Selesai & Ganti Siswa
+                            <button onclick="window.resetApp()" class="w-full mt-8 bg-gray-200 hover:bg-green-500 hover:text-white text-gray-700 px-4 py-3 rounded-xl font-bold transition shadow-md">
+                                🔄 Selesai & Lihat Rekap
                             </button>
                         </div>
                     </div>
@@ -239,7 +239,7 @@
         <!-- SECTION REKAP NILAI -->
         <section id="rekap" class="bg-white rounded-2xl shadow-xl p-8 border-t-8 border-blue-500">
             <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b pb-4 gap-4">
-                <h2 class="text-3xl font-bold text-blue-700">📊 Rekap Kelas (Tersimpan di Cloud)</h2>
+                <h2 class="text-3xl font-bold text-blue-700">📊 Rekap Kelas (Tersimpan Otomatis)</h2>
                 <div class="flex gap-2">
                     <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold shadow transition flex items-center">
                         🖨️ Cetak
@@ -250,7 +250,7 @@
                 </div>
             </div>
             
-            <p class="text-gray-500 mb-6 text-sm">Nilai akan otomatis masuk dan tersinkronisasi ke semua perangkat (HP, Tablet, Laptop) secara real-time.</p>
+            <p class="text-gray-500 mb-6 text-sm">Nilai akan otomatis masuk setelah kuis selesai. <strong class="text-red-500">Klik nama siswa di tabel untuk langsung mengulang kuis (Remedial).</strong></p>
 
             <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
                 <table class="w-full text-left border-collapse bg-white">
@@ -301,7 +301,6 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Bank Soal Diperbanyak menjadi 30 agar sistem Remedial punya soal cadangan
         const bankSoal = [
             { q: "Tangga nada yang memiliki 7 nada pokok disebut tangga nada...", options: ["Pentatonis", "Diatonis", "Kromatis", "Slendro"], answer: 1 },
             { q: "Jarak nada (interval) 1 - 1 - ½ - 1 - 1 - 1 - ½ adalah ciri dari tangga nada...", options: ["Diatonis Minor", "Pentatonis Pelog", "Diatonis Mayor", "Kromatis"], answer: 2 },
@@ -346,7 +345,7 @@
         ];
 
         let currentQuestions = [];
-        let currentQuestionStrings = []; // Menyimpan teks soal yang sedang dikerjakan
+        let currentQuestionStrings = []; 
         let totalBenar = 0;
         let totalSalah = 0;
         let totalTerjawab = 0;
@@ -364,7 +363,6 @@
             db = getFirestore(app);
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
             
-            // Path Firebase terpusat untuk Data Kelas
             userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rekapNilai', 'kelas6_SDN60');
 
             const initAuth = async () => {
@@ -385,7 +383,6 @@
                     document.getElementById('cloud-status').classList.replace("bg-green-800", "bg-blue-600");
                     document.getElementById('cloud-status').classList.replace("text-green-200", "text-white");
 
-                    // Mendengarkan perubahan data secara Real-Time
                     onSnapshot(userDocRef, (docSnap) => {
                         if (docSnap.exists()) {
                             rekapNilai = docSnap.data().records || {};
@@ -406,7 +403,6 @@
         }
 
         function initializeDefaultRekap() {
-            // Data awal yang sudah diisi berdasarkan rekapan sebelumnya
             const prefilledData = {
                 "AFGAN DAYI ALFATH": { score: 80, status: "TUNTAS", pastQuestions: [] },
                 "AIVINA LATIFAH PUTRY": { score: 80, status: "TUNTAS", pastQuestions: [] },
@@ -438,7 +434,6 @@
             renderRekapTable();
         }
 
-        // Isi Dropdown Siswa
         const selectEl = document.getElementById('student-select');
         studentsList.forEach(student => {
             const opt = document.createElement('option');
@@ -447,7 +442,7 @@
             selectEl.appendChild(opt);
         });
 
-        // Tampilkan Tabel Rekap
+        // Tampilkan Tabel Rekap dengan Tombol Klik Langsung
         function renderRekapTable() {
             const tbody = document.getElementById('rekap-tbody');
             tbody.innerHTML = ''; 
@@ -458,14 +453,39 @@
                 tr.className = 'border-b hover:bg-gray-50 transition print:border-b-2 print:border-gray-200';
                 
                 let statusColor = 'text-gray-400 italic'; 
-                if (data.status === 'TUNTAS') statusColor = 'text-green-600 font-bold';
-                if (data.status === 'REMEDIAL') statusColor = 'text-red-600 font-bold';
+                let nameCell = `<span class="font-medium text-gray-800">${student}</span>`; // Tampilan default (Lulus)
+
+                if (data.status === 'TUNTAS') {
+                    statusColor = 'text-green-600 font-bold';
+                    nameCell = `<span class="font-bold text-gray-800">${student}</span> <span class="text-xs ml-2 text-green-500 print:hidden">✔️</span>`;
+                } 
+                else if (data.status === 'REMEDIAL') {
+                    statusColor = 'text-red-600 font-bold';
+                    // Buat Nama bisa diklik khusus untuk Remedial
+                    nameCell = `
+                        <button onclick="window.startQuiz('${student}')" class="text-left w-full group print:hidden">
+                            <span class="font-bold text-red-600 group-hover:underline">${student}</span>
+                            <span class="ml-2 inline-block bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-300 shadow-sm animate-pulse">KLIK UNTUK MENGULANG 🔄</span>
+                        </button>
+                        <span class="hidden print:inline font-bold text-red-600">${student}</span>
+                    `;
+                }
+                else { // Belum Mengerjakan
+                    // Buat Nama bisa diklik khusus untuk yang belum mulai
+                    nameCell = `
+                        <button onclick="window.startQuiz('${student}')" class="text-left w-full group print:hidden">
+                            <span class="font-bold text-blue-600 group-hover:underline">${student}</span>
+                            <span class="ml-2 inline-block bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-300 shadow-sm">MULAI KUIS ✏️</span>
+                        </button>
+                        <span class="hidden print:inline font-medium text-gray-800">${student}</span>
+                    `;
+                }
                 
                 let scoreDisplay = data.score === '-' ? '-' : data.score;
 
                 tr.innerHTML = `
                     <td class="py-3 px-6 text-center">${index + 1}</td>
-                    <td class="py-3 px-6 font-medium text-gray-800">${student}</td>
+                    <td class="py-3 px-6">${nameCell}</td>
                     <td class="py-3 px-6 text-center font-bold text-lg">${scoreDisplay}</td>
                     <td class="py-3 px-6 text-center ${statusColor}">${data.status}</td>
                 `;
@@ -482,20 +502,29 @@
             return shuffled;
         }
 
-        // FUNGSI UTAMA KUIS (Diekspos ke window agar bisa diakses tombol HTML)
-        window.startQuiz = function() {
-            const selectEl = document.getElementById('student-select');
-            const selectedStudent = selectEl.value;
+        // FUNGSI UTAMA KUIS (Diperbarui agar bisa menerima nama langsung dari tabel)
+        window.startQuiz = function(directStudentName) {
+            let selectedStudent = directStudentName;
+            
+            // Jika dipanggil dari tombol utama "Mulai Kuis Sekarang" (bukan string dari tabel)
+            if (typeof directStudentName !== 'string') {
+                const selectEl = document.getElementById('student-select');
+                selectedStudent = selectEl.value;
+            }
 
             if (!selectedStudent) {
                 document.getElementById('alert-modal').classList.remove('hidden');
                 return;
             }
 
+            // Atur UI
             document.getElementById('setup-screen').classList.add('hidden');
             document.getElementById('quiz-screen').classList.remove('hidden');
             document.getElementById('active-student-name').innerText = selectedStudent;
             document.getElementById('status-container').classList.add('hidden');
+            
+            // Sinkronkan nama di dropdown jika diklik dari tabel
+            document.getElementById('student-select').value = selectedStudent;
 
             totalBenar = 0;
             totalSalah = 0;
@@ -512,7 +541,6 @@
                 availableQuestions = bankSoal.filter(q => !studentData.pastQuestions.includes(q.q));
                 badge.classList.remove('hidden'); // Tampilkan badge khusus Remedial
                 
-                // Jika soal cadangan kurang dari 10, campur ulang semuanya agar cukup
                 if(availableQuestions.length < 10) {
                     availableQuestions = [...bankSoal];
                 }
@@ -522,8 +550,6 @@
 
             // Ambil 10 Soal Acak
             currentQuestions = shuffleArray(availableQuestions).slice(0, 10);
-            
-            // Simpan teks pertanyaan untuk direkam nanti
             currentQuestionStrings = currentQuestions.map(q => q.q);
 
             const container = document.getElementById('quiz-container');
@@ -610,14 +636,12 @@
             rekapNilai[studentName] = { 
                 score: finalScore, 
                 status: finalStatus,
-                pastQuestions: currentQuestionStrings // Supaya ketahuan soal apa yg pernah dikerjakan
+                pastQuestions: currentQuestionStrings 
             };
 
             if (isOnline && currentUser) {
-                // Simpan ke Firestore
                 setDoc(userDocRef, { records: rekapNilai }, { merge: true });
             } else {
-                // Simpan ke Lokal
                 localStorage.setItem('rekapSeniMusik6', JSON.stringify(rekapNilai));
                 renderRekapTable();
             }
@@ -629,10 +653,7 @@
             document.getElementById('quiz-screen').classList.add('hidden');
             document.getElementById('student-select').value = ""; 
             
-            // Render ulang tabel untuk memastikan data sudah masuk secara visual
-            renderRekapTable();
-            
-            // Scroll otomatis ke bagian tabel Rekap Nilai
+            // Otomatis menggulir ke Tabel Rekap Nilai agar hasil terlihat langsung
             document.getElementById('rekap').scrollIntoView({ behavior: 'smooth' });
         }
 
